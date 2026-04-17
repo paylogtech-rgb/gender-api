@@ -2,12 +2,10 @@ import requests
 from django.http import JsonResponse
 from datetime import datetime, timezone
 
-def test(request):
-    return JsonResponse({"message": "working"})
-
 def classify_name(request):
     name = request.GET.get('name')
 
+    # 400: missing name
     if not name:
         return JsonResponse({
             "status": "error",
@@ -29,11 +27,14 @@ def classify_name(request):
         probability = data.get("probability")
         count = data.get("count")
 
-        if gender is None or count == 0:
+        # ✅ FIXED CONDITION (IMPORTANT)
+        if gender is None or count is None or count == 0:
             return JsonResponse({
                 "status": "error",
                 "message": "No prediction available for the provided name"
             }, status=422)
+
+        probability = float(probability)
 
         is_confident = probability >= 0.7 and count >= 100
 
@@ -49,7 +50,7 @@ def classify_name(request):
                 "is_confident": is_confident,
                 "processed_at": processed_at
             }
-        })
+        }, status=200)
 
     except Exception:
         return JsonResponse({
