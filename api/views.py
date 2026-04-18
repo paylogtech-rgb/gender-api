@@ -100,7 +100,6 @@ def create_profile(request):
                 "data": serialize_profile(existing)
             }, status=200)
 
-        # API calls
         g = requests.get(f"https://api.genderize.io?name={name}").json()
         a = requests.get(f"https://api.agify.io?name={name}").json()
         n = requests.get(f"https://api.nationalize.io?name={name}").json()
@@ -144,7 +143,7 @@ def create_profile(request):
         return JsonResponse({"status": "error", "message": "Server error"}, status=500)
 
 
-# ✅ FIXED FILTERING (ONLY CHANGE)
+# ✅ FIXED FILTERING
 @require_GET
 def get_all_profiles(request):
     try:
@@ -185,23 +184,40 @@ def get_all_profiles(request):
         return JsonResponse({"status": "error", "message": "Server error"}, status=500)
 
 
+# ✅ FIXED GET SINGLE PROFILE
 @require_http_methods(["GET"])
 def get_profile(request, id):
-    profile = Profile.objects.filter(id=id).first()
+    try:
+        profile = Profile.objects.get(id=id)
 
-    if not profile:
-        return JsonResponse({"status": "error", "message": "Profile not found"}, status=404)
+        return JsonResponse({
+            "status": "success",
+            "data": serialize_profile(profile)
+        }, status=200)
 
-    return JsonResponse({"status": "success", "data": serialize_profile(profile)}, status=200)
+    except Profile.DoesNotExist:
+        return JsonResponse({
+            "status": "error",
+            "message": "Profile not found"
+        }, status=404)
 
 
+# ✅ FIXED DELETE (NO MORE 403)
 @csrf_exempt
-@require_http_methods(["DELETE"])
 def delete_profile(request, id):
+    if request.method != "DELETE":
+        return JsonResponse({
+            "status": "error",
+            "message": "Method not allowed"
+        }, status=405)
+
     profile = Profile.objects.filter(id=id).first()
 
     if not profile:
-        return JsonResponse({"status": "error", "message": "Profile not found"}, status=404)
+        return JsonResponse({
+            "status": "error",
+            "message": "Profile not found"
+        }, status=404)
 
     profile.delete()
     return JsonResponse({}, status=204)
