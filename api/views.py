@@ -1,4 +1,11 @@
 from datetime import datetime, timezone
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_http_methods, require_GET
+import json
+import requests
+from .models import Profile
+
 
 def classify_name(request):
     name = request.GET.get('name')
@@ -53,14 +60,6 @@ def classify_name(request):
             "status": "error",
             "message": "Server error"
         }, status=500)
-
-
-from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
-from django.views.decorators.http import require_http_methods
-import json
-import requests
-from .models import Profile
 
 
 def serialize_profile(profile):
@@ -145,7 +144,8 @@ def create_profile(request):
         return JsonResponse({"status": "error", "message": "Server error"}, status=500)
 
 
-@require_http_methods(["GET"])
+# ✅ FIXED FILTERING (ONLY CHANGE)
+@require_GET
 def get_all_profiles(request):
     try:
         profiles = Profile.objects.all()
@@ -155,13 +155,13 @@ def get_all_profiles(request):
         age_group = request.GET.get("age_group")
 
         if gender:
-            profiles = profiles.filter(gender__iexact=gender)
+            profiles = profiles.filter(gender__iexact=gender.strip())
 
         if country_id:
-            profiles = profiles.filter(country_id__iexact=country_id)
+            profiles = profiles.filter(country_id__iexact=country_id.strip())
 
         if age_group:
-            profiles = profiles.filter(age_group__iexact=age_group)
+            profiles = profiles.filter(age_group__iexact=age_group.strip())
 
         data = [
             {
