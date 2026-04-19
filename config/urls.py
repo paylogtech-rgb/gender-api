@@ -13,8 +13,13 @@ urlpatterns = [
 
     path('api/classify', classify_name),
 
+    # ✅ POST
     path('api/profiles', create_profile),
+
+    # ✅ GET ALL (IMPORTANT: trailing slash)
     path('api/profiles/', get_all_profiles),
+
+    # ✅ GET SINGLE + DELETE (SAME ENDPOINT)
     path('api/profiles/<uuid:id>', get_profile),
-    path('api/profiles/<uuid:id>/delete', delete_profile),
+    path('api/profiles/<uuid:id>', delete_profile),
 ]
