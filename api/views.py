@@ -1,11 +1,4 @@
 from datetime import datetime, timezone
-from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
-from django.views.decorators.http import require_http_methods, require_GET
-import json
-import requests
-from .models import Profile
-
 
 def classify_name(request):
     name = request.GET.get('name')
@@ -62,6 +55,14 @@ def classify_name(request):
         }, status=500)
 
 
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_http_methods
+import json
+import requests
+from .models import Profile
+
+
 def serialize_profile(profile):
     return {
         "id": str(profile.id),
@@ -100,6 +101,7 @@ def create_profile(request):
                 "data": serialize_profile(existing)
             }, status=200)
 
+        # API calls
         g = requests.get(f"https://api.genderize.io?name={name}").json()
         a = requests.get(f"https://api.agify.io?name={name}").json()
         n = requests.get(f"https://api.nationalize.io?name={name}").json()
@@ -143,8 +145,7 @@ def create_profile(request):
         return JsonResponse({"status": "error", "message": "Server error"}, status=500)
 
 
-# ✅ FIXED FILTERING
-@require_GET
+@require_http_methods(["GET"])
 def get_all_profiles(request):
     try:
         profiles = Profile.objects.all()
@@ -154,13 +155,13 @@ def get_all_profiles(request):
         age_group = request.GET.get("age_group")
 
         if gender:
-            profiles = profiles.filter(gender__iexact=gender.strip())
+            profiles = profiles.filter(gender__iexact=gender)
 
         if country_id:
-            profiles = profiles.filter(country_id__iexact=country_id.strip())
+            profiles = profiles.filter(country_id__iexact=country_id)
 
         if age_group:
-            profiles = profiles.filter(age_group__iexact=age_group.strip())
+            profiles = profiles.filter(age_group__iexact=age_group)
 
         data = [
             {
@@ -184,40 +185,23 @@ def get_all_profiles(request):
         return JsonResponse({"status": "error", "message": "Server error"}, status=500)
 
 
-# ✅ FIXED GET SINGLE PROFILE
 @require_http_methods(["GET"])
 def get_profile(request, id):
-    try:
-        profile = Profile.objects.get(id=id)
-
-        return JsonResponse({
-            "status": "success",
-            "data": serialize_profile(profile)
-        }, status=200)
-
-    except Profile.DoesNotExist:
-        return JsonResponse({
-            "status": "error",
-            "message": "Profile not found"
-        }, status=404)
-
-
-# ✅ FIXED DELETE (NO MORE 403)
-@csrf_exempt
-def delete_profile(request, id):
-    if request.method != "DELETE":
-        return JsonResponse({
-            "status": "error",
-            "message": "Method not allowed"
-        }, status=405)
-
     profile = Profile.objects.filter(id=id).first()
 
     if not profile:
-        return JsonResponse({
-            "status": "error",
-            "message": "Profile not found"
-        }, status=404)
+        return JsonResponse({"status": "error", "message": "Profile not found"}, status=404)
+
+    return JsonResponse({"status": "success", "data": serialize_profile(profile)}, status=200)
+
+
+@csrf_exempt
+@require_http_methods(["DELETE"])
+def delete_profile(request, id):
+    profile = Profile.objects.filter(id=id).first()
+
+    if not profile:
+        return JsonResponse({"status": "error", "message": "Profile not found"}, status=404)
 
     profile.delete()
     return JsonResponse({}, status=204)

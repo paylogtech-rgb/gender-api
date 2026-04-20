@@ -8,7 +8,6 @@ from api.views import (
     delete_profile
 )
 
-# ✅ handle both GET and POST in one route
 def profiles_entry(request):
     if request.method == "POST":
         return create_profile(request)
@@ -17,16 +16,11 @@ def profiles_entry(request):
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-
-    # Stage 0
     path('api/classify', classify_name),
 
-    # ✅ FIXED (NO TRAILING SLASH PROBLEM)
+    # ✅ NO SLASH VERSION
     path('api/profiles', profiles_entry),
 
-    # Single profile
     path('api/profiles/<uuid:id>', get_profile),
-
-    # Delete
     path('api/profiles/<uuid:id>', delete_profile),
 ]
