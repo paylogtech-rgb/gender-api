@@ -1,3 +1,7 @@
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
+
+
 from datetime import datetime, timezone
 
 def classify_name(request):
@@ -205,3 +209,158 @@ def delete_profile(request, id):
 
     profile.delete()
     return JsonResponse({}, status=204)
+
+
+    from rest_framework.decorators import api_view
+from rest_framework.response import Response
+from .models import Profile
+from .serializers import ProfileSerializer
+
+@api_view(['GET'])
+def get_profiles(request):
+    queryset = Profile.objects.all()
+
+    # 🔹 FILTERING
+    gender = request.GET.get('gender')
+    if gender:
+        queryset = queryset.filter(gender=gender)
+
+    age_group = request.GET.get('age_group')
+    if age_group:
+        queryset = queryset.filter(age_group=age_group)
+
+    country_id = request.GET.get('country_id')
+    if country_id:
+        queryset = queryset.filter(country_id=country_id)
+
+    min_age = request.GET.get('min_age')
+    if min_age:
+        queryset = queryset.filter(age__gte=min_age)
+
+    max_age = request.GET.get('max_age')
+    if max_age:
+        queryset = queryset.filter(age__lte=max_age)
+
+    # 🔹 SORTING (NOW CORRECTLY INSIDE FUNCTION)
+    sort_by = request.GET.get('sort_by')
+    order = request.GET.get('order', 'asc')
+
+    allowed_sort_fields = ['age', 'created_at', 'gender_probability']
+
+    if sort_by:
+        if sort_by not in allowed_sort_fields:
+            return Response({
+                "status": "error",
+                "message": "Invalid query parameters"
+            }, status=422)
+
+        if order == 'desc':
+            sort_by = f"-{sort_by}"
+
+        queryset = queryset.order_by(sort_by)
+
+    # 🔹 PAGINATION
+    page = request.GET.get('page', 1)
+    limit = request.GET.get('limit', 10)
+
+    try:
+        page = int(page)
+        limit = int(limit)
+    except ValueError:
+        return Response({
+            "status": "error",
+            "message": "Invalid query parameters"
+        }, status=422)
+
+    if limit > 50:
+        limit = 50
+
+    start = (page - 1) * limit
+    end = start + limit
+
+    total = queryset.count()
+    queryset = queryset[start:end]
+
+    # 🔹 SERIALIZE
+    serializer = ProfileSerializer(queryset, many=True)
+
+    return Response({
+        "status": "success",
+        "page": page,
+        "limit": limit,
+        "total": total,
+        "data": serializer.data
+    })
+
+@api_view(['GET'])
+def search_profiles(request):
+    query = request.GET.get('q')
+
+    if not query:
+        return Response({
+            "status": "error",
+            "message": "Unable to interpret query"
+        }, status=400)
+
+    query = query.lower()
+    queryset = Profile.objects.all()
+
+    # 🔹 GENDER
+    if "male" in query:
+        queryset = queryset.filter(gender="male")
+    elif "female" in query:
+        queryset = queryset.filter(gender="female")
+
+    # 🔹 AGE KEYWORDS
+    if "young" in query:
+        queryset = queryset.filter(age__gte=16, age__lte=24)
+
+    if "adult" in query:
+        queryset = queryset.filter(age_group="adult")
+
+    if "teenager" in query:
+        queryset = queryset.filter(age_group="teenager")
+
+    # 🔹 AGE NUMBER (above)
+    if "above" in query:
+        words = query.split()
+        for i, word in enumerate(words):
+            if word == "above" and i + 1 < len(words):
+                try:
+                    age = int(words[i + 1])
+                    queryset = queryset.filter(age__gte=age)
+                except:
+                    pass
+
+    # 🔹 COUNTRY
+    if "nigeria" in query:
+        queryset = queryset.filter(country_id="NG")
+
+    if "kenya" in query:
+        queryset = queryset.filter(country_id="KE")
+
+    if "angola" in query:
+        queryset = queryset.filter(country_id="AO")
+
+    # 🔹 PAGINATION
+    page = int(request.GET.get('page', 1))
+    limit = int(request.GET.get('limit', 10))
+
+    if limit > 50:
+        limit = 50
+
+    start = (page - 1) * limit
+    end = start + limit
+
+    total = queryset.count()
+    queryset = queryset[start:end]
+
+    serializer = ProfileSerializer(queryset, many=True)
+
+    return Response({
+        "status": "success",
+        "page": page,
+        "limit": limit,
+        "total": total,
+        "data": serializer.data
+    })

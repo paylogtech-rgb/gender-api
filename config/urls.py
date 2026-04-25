@@ -24,3 +24,11 @@ urlpatterns = [
     path('api/profiles/<uuid:id>', get_profile),
     path('api/profiles/<uuid:id>', delete_profile),
 ]
+
+from django.contrib import admin
+from django.urls import path, include
+
+urlpatterns = [
+    path('admin/', admin.site.urls),
+    path('api/', include('api.urls')),
+]
